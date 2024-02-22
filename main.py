@@ -24,12 +24,11 @@ async def extract_images(html):
     return image_urls
 
 
-async def download_image(url, directory, max_size=1024 * 1024):
+async def download_image(url, directory, image_name, max_size=1024 * 1024):
     async with httpx.AsyncClient() as client:
         response = await client.get(url)
 
         if response.status_code == 200:
-            image_name = str(uuid.uuid4()) + ".jpg"
             image_path = os.path.join(directory, image_name)
 
             if len(response.content) > max_size:
@@ -40,33 +39,50 @@ async def download_image(url, directory, max_size=1024 * 1024):
                 f.write(response.content)
 
 
-async def process_page(url, directory):
+async def process_page(url, directory, number):
+    currentNumber = number
     html = await fetch(url)
     image_urls = await extract_images(html)
-    tasks = [download_image(img_url, directory) for img_url in image_urls]
-    await asyncio.gather(*tasks)
+
+    if len(image_urls) < currentNumber:
+        currentNumber -= len(image_urls)
+    else:
+        image_urls = image_urls[:number]
+        currentNumber = 0
+
+    for index, img_url in enumerate(image_urls):
+        image_name = f"{index}_{uuid.uuid4()}.jpg"
+        await download_image(img_url, directory, image_name, number)
+
+    return currentNumber
 
 
-async def crawler(start_url, directory, visited_urls, count):
+async def crawler(start_url, directory, visited_urls, count, number):
+    currentNumber = number
+
     if start_url not in visited_urls:
         visited_urls.add(start_url)
         with open(VISITED_URLS_FILE, "a") as f:
             f.write(start_url + "\n")
 
-        await process_page(start_url, directory)
+        currentNumber = await process_page(start_url, directory, number)
 
-    html = await fetch(start_url)
-    soup = BeautifulSoup(html, 'html.parser')
+    if currentNumber > 0:
+        html = await fetch(start_url)
+        soup = BeautifulSoup(html, 'html.parser')
 
-    count += 1
-    nextPage = soup.find("a", class_="pager__link", text=count).get("href")
-    nextPageUrl = "https://wallpaperscraft.com" + nextPage
+        count += 1
+        nextPage = soup.find("a", class_="pager__link", string=str(count))
+        if nextPage:
+            nextPageUrl = "https://wallpaperscraft.com" + nextPage.get("href")
+            await crawler(nextPageUrl, directory, visited_urls, count, number)
+        else:
+            print("Страница не найдена")
+    else:
+        print("Нужное количество изображений скачено")
 
-    task = crawler(nextPageUrl, directory, visited_urls, count)
-    await asyncio.gather(task)
 
-
-async def main():
+async def main(number: int):
     start_url = "https://wallpaperscraft.com/"
 
     directory = 'images'
@@ -80,8 +96,8 @@ async def main():
         with open(VISITED_URLS_FILE, "r") as f:
             visited_urls = set(f.read().splitlines())
 
-    await crawler(start_url, directory, visited_urls, i)
+    await crawler(start_url, directory, visited_urls, i, number)
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(main(number=10))
