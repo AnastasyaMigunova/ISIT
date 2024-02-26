@@ -5,7 +5,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
-.visited_urls.txt
+visited_urls.txt
 .images
 # C extensions
 *.so

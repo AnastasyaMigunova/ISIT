@@ -1,3 +1,5 @@
+import base64
+import logging
 import os
 import asyncio
 import hashlib
@@ -45,10 +47,11 @@ async def download_image(url, session):
         response = await client.get(url)
 
         if response.status_code == 200:
-            checksum = hashlib.md5(response.content).hexdigest()
             compressed_data = await compress_image(response.content)
-            image_data = ImageData(id=checksum, data=compressed_data)
-            session.add(image_data)
+            checksum = hashlib.md5(compressed_data).hexdigest()
+            imageBase64 = base64.b64encode(compressed_data).decode('utf-8')
+            image = ImageData(id=checksum, data=imageBase64)
+            session.add(image)
 
 
 async def process_page(url, session, number):
@@ -90,9 +93,9 @@ async def crawler(start_url, session, visited_urls, count, number):
             nextPageUrl = "https://wallpaperscraft.com" + nextPage.get("href")
             await crawler(nextPageUrl, session, visited_urls, count, number)
         else:
-            print("Page not found")
+            logging.info("Page not found")
     else:
-        print("The required number of images has been downloaded")
+        logging.info("The required number of images has been downloaded")
 
 
 async def main(number: int):
