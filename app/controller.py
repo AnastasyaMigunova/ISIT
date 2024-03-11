@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, APIRouter
-from ISIT.app import main
+import main
 from ISIT.app.context import ctx
 
 router = APIRouter()
@@ -23,5 +23,6 @@ async def scrapeImages(imageCount: int):
                     directory=ctx.directory,
                     number=imageCount,
                     visited_urls=ctx.visitedPages,
-                    start_url=ctx.startUrl)
+                    start_url=ctx.startUrl,
+                    session=ctx.async_session)
     return {"message": "scraping is successful"}
