@@ -3,10 +3,12 @@
 # Byte-compiled / optimized / DLL files
 .idea
 __pycache__/
+config
+app/images/
+.env
 *.py[cod]
 *$py.class
-visited_urls.txt
-.images
+*.txt
 # C extensions
 *.so
 
